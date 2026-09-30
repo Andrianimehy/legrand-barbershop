@@ -47,7 +47,9 @@ export default function Booking() {
       .select('id, name, duration, price, category')
       .eq('active', true)
       .order('sort_order')
-      .then(({ data }) => { if (data) setServices(data as ServiceItem[]); });
+      .then(({ data }) => {
+        if (data) setServices(data as ServiceItem[]);
+      });
   }, []);
 
   const selectedService = services.find((s) => s.name === form.service);
@@ -64,17 +66,33 @@ export default function Booking() {
     return max.toISOString().split('T')[0];
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
+
     try {
-      const { data: reservation, error: dbError } = await supabase.from('reservations').insert([form]).select().single();
+      // Générer l'ID avant l'insertion
+      const reservationId = crypto.randomUUID();
+
+      // Enregistrer la réservation
+      const { error: dbError } = await supabase
+        .from('reservations')
+        .insert([
+          {
+            ...form,
+            id: reservationId,
+          },
+        ]);
+
       if (dbError) throw dbError;
 
+      // Initialiser le paiement mobile si nécessaire
       if (form.payment_method !== 'cash' && selectedService) {
         try {
           const response = await fetch(
@@ -86,7 +104,7 @@ export default function Booking() {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                reservation_id: reservation.id,
+                reservation_id: reservationId,
                 amount: selectedService.price,
                 phone_number: form.payment_phone,
               }),
@@ -117,25 +135,42 @@ export default function Booking() {
 
   if (success) {
     const paymentPending = form.payment_method !== 'cash';
+
     return (
       <div className="bg-[#0a0a0a] min-h-screen pt-20 flex items-center justify-center px-4">
         <div className="max-w-lg w-full text-center card-dark p-12">
           <div className="w-20 h-20 rounded-full border-2 border-amber-500 flex items-center justify-center mx-auto mb-6 scale-in">
             <CheckCircle size={36} className="text-gold" />
           </div>
-          <h2 className="section-title text-white mb-3">Réservation Confirmée !</h2>
+
+          <h2 className="section-title text-white mb-3">
+            Réservation Confirmée !
+          </h2>
+
           <div className="gold-divider" />
+
           <p className="text-gray-400 mb-6 text-sm leading-relaxed">
-            Merci <span className="text-white font-medium">{form.full_name}</span> ! Votre rendez-vous a été enregistré.
-            Nous vous contacterons au <span className="text-gold">{form.phone}</span> pour confirmer votre séance.
+            Merci <span className="text-white font-medium">{form.full_name}</span> !
+            Votre rendez-vous a été enregistré.
+            Nous vous contacterons au{' '}
+            <span className="text-gold">{form.phone}</span> pour confirmer votre séance.
           </p>
 
           {paymentPending && (
             <div className="bg-amber-900/20 border border-amber-800/40 rounded px-4 py-3 mb-6">
-              <p className="text-amber-300 text-sm font-medium mb-2">Paiement en cours</p>
-              <p className="text-gray-400 text-xs">
-                Une requête de paiement de <span className="text-gold font-bold">{selectedService?.price.toLocaleString() ?? '–'} Ar</span> a été envoyée à votre numéro <span className="text-gold">{form.payment_phone}</span>.
+              <p className="text-amber-300 text-sm font-medium mb-2">
+                Paiement en cours
               </p>
+
+              <p className="text-gray-400 text-xs">
+                Une requête de paiement de{' '}
+                <span className="text-gold font-bold">
+                  {selectedService?.price.toLocaleString() ?? '–'} Ar
+                </span>{' '}
+                a été envoyée à votre numéro{' '}
+                <span className="text-gold">{form.payment_phone}</span>.
+              </p>
+
               <p className="text-gray-500 text-xs mt-2">
                 Veuillez confirmer le paiement sur votre téléphone Mvola/Airtel Money.
               </p>
@@ -147,27 +182,49 @@ export default function Booking() {
               <span className="text-gray-500">Service</span>
               <span className="text-white">{form.service}</span>
             </div>
+
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Date</span>
-              <span className="text-white">{new Date(form.appointment_date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span className="text-white">
+                {new Date(form.appointment_date).toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </span>
             </div>
+
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Heure</span>
               <span className="text-white">{form.appointment_time}</span>
             </div>
+
             {form.barber_name && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Barbier</span>
                 <span className="text-white">{form.barber_name}</span>
               </div>
             )}
+
             <div className="flex justify-between text-sm border-t border-gray-800 pt-2 mt-2">
               <span className="text-gray-500">Paiement</span>
-              <span className="text-white capitalize">{form.payment_method === 'mvola' ? 'Mvola' : form.payment_method === 'airtel' ? 'Airtel Money' : 'Espèces'}</span>
+              <span className="text-white capitalize">
+                {form.payment_method === 'mvola'
+                  ? 'Mvola'
+                  : form.payment_method === 'airtel'
+                    ? 'Airtel Money'
+                    : 'Espèces'}
+              </span>
             </div>
           </div>
+
           <button
-            onClick={() => { setSuccess(false); setForm(initialForm); setStep(0); }}
+            onClick={() => {
+              setSuccess(false);
+              setForm(initialForm);
+              setStep(0);
+            }}
             className="btn-gold w-full"
           >
             Nouvelle Réservation
@@ -181,10 +238,15 @@ export default function Booking() {
     <div className="bg-[#0a0a0a] min-h-screen pt-20">
       <section className="py-16 bg-[#0d0d0d] border-b border-gray-800">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-gold tracking-[0.3em] uppercase text-xs mb-3">En Ligne 24h/24</p>
+          <p className="text-gold tracking-[0.3em] uppercase text-xs mb-3">
+            En Ligne 24h/24
+          </p>
+
           <h1 className="section-title text-white">
-            Réserver Votre<br /><span className="gold-text">Rendez-vous</span>
+            Réserver Votre<br />
+            <span className="gold-text">Rendez-vous</span>
           </h1>
+
           <div className="gold-divider" />
         </div>
       </section>
@@ -199,19 +261,37 @@ export default function Booking() {
                 }`}
                 onClick={() => i < step && setStep(i)}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                  i < step ? 'bg-gold text-black' :
-                  i === step ? 'border-2 border-gold text-gold' :
-                  'border-2 border-gray-700 text-gray-600'
-                }`}>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                    i < step
+                      ? 'bg-gold text-black'
+                      : i === step
+                        ? 'border-2 border-gold text-gold'
+                        : 'border-2 border-gray-700 text-gray-600'
+                  }`}
+                >
                   {i < step ? '✓' : i + 1}
                 </div>
-                <span className={`text-xs tracking-wide hidden sm:block ${
-                  i === step ? 'text-gold' : i < step ? 'text-gray-400' : 'text-gray-700'
-                }`}>{s}</span>
+
+                <span
+                  className={`text-xs tracking-wide hidden sm:block ${
+                    i === step
+                      ? 'text-gold'
+                      : i < step
+                        ? 'text-gray-400'
+                        : 'text-gray-700'
+                  }`}
+                >
+                  {s}
+                </span>
               </div>
+
               {i < steps.length - 1 && (
-                <div className={`w-8 sm:w-16 h-px mx-2 transition-all duration-300 ${i < step ? 'bg-gold' : 'bg-gray-800'}`} />
+                <div
+                  className={`w-8 sm:w-16 h-px mx-2 transition-all duration-300 ${
+                    i < step ? 'bg-gold' : 'bg-gray-800'
+                  }`}
+                />
               )}
             </div>
           ))}
@@ -220,9 +300,14 @@ export default function Booking() {
         <div className="card-dark p-8">
           {step === 0 && (
             <div className="fade-in">
-              <h2 className="text-white text-xl font-bold mb-6 flex items-center gap-3" style={{ fontFamily: 'Playfair Display, serif' }}>
-                <User size={20} className="text-gold" /> Choisissez un Service
+              <h2
+                className="text-white text-xl font-bold mb-6 flex items-center gap-3"
+                style={{ fontFamily: 'Playfair Display, serif' }}
+              >
+                <User size={20} className="text-gold" />
+                Choisissez un Service
               </h2>
+
               <div className="grid sm:grid-cols-2 gap-3 mb-8">
                 {services.map((s) => (
                   <div
@@ -239,13 +324,20 @@ export default function Booking() {
                         <p className="text-white text-sm font-medium">{s.name}</p>
                         <p className="text-gray-600 text-xs mt-1">{s.duration}</p>
                       </div>
-                      <span className="text-gold font-bold text-sm shrink-0 ml-2">{s.price.toLocaleString()} Ar</span>
+
+                      <span className="text-gold font-bold text-sm shrink-0 ml-2">
+                        {s.price.toLocaleString()} Ar
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
+
               <div className="mb-6">
-                <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">Barbier Préféré (optionnel)</label>
+                <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                  Barbier Préféré (optionnel)
+                </label>
+
                 <select
                   name="barber_name"
                   value={form.barber_name}
@@ -253,15 +345,21 @@ export default function Booking() {
                   className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200"
                 >
                   <option value="">Pas de préférence</option>
+
                   {barbers.map((b) => (
-                    <option key={b.id} value={b.name}>{b.name} — {b.specialty}</option>
+                    <option key={b.id} value={b.name}>
+                      {b.name} — {b.specialty}
+                    </option>
                   ))}
                 </select>
               </div>
+
               <button
                 disabled={!canProceedStep0}
                 onClick={() => setStep(1)}
-                className={`btn-gold w-full flex items-center justify-center gap-2 ${!canProceedStep0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                className={`btn-gold w-full flex items-center justify-center gap-2 ${
+                  !canProceedStep0 ? 'opacity-40 cursor-not-allowed' : ''
+                }`}
               >
                 Continuer <ChevronRight size={16} />
               </button>
@@ -270,16 +368,32 @@ export default function Booking() {
 
           {step === 1 && (
             <div className="fade-in">
-              <h2 className="text-white text-xl font-bold mb-6 flex items-center gap-3" style={{ fontFamily: 'Playfair Display, serif' }}>
-                <Calendar size={20} className="text-gold" /> Date & Heure
+              <h2
+                className="text-white text-xl font-bold mb-6 flex items-center gap-3"
+                style={{ fontFamily: 'Playfair Display, serif' }}
+              >
+                <Calendar size={20} className="text-gold" />
+                Date & Heure
               </h2>
+
               {selectedService && (
                 <div className="bg-amber-900/10 border border-amber-800/30 px-4 py-3 mb-6">
-                  <p className="text-gold text-xs">Service sélectionné : <span className="text-white">{selectedService.name}</span> — {selectedService.duration} — <span className="font-bold">{selectedService.price.toLocaleString()} Ar</span></p>
+                  <p className="text-gold text-xs">
+                    Service sélectionné :{' '}
+                    <span className="text-white">{selectedService.name}</span> —{' '}
+                    {selectedService.duration} —{' '}
+                    <span className="font-bold">
+                      {selectedService.price.toLocaleString()} Ar
+                    </span>
+                  </p>
                 </div>
               )}
+
               <div className="mb-6">
-                <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">Date du Rendez-vous</label>
+                <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                  Date du Rendez-vous
+                </label>
+
                 <input
                   type="date"
                   name="appointment_date"
@@ -291,10 +405,13 @@ export default function Booking() {
                   className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200"
                 />
               </div>
+
               <div className="mb-8">
                 <label className="block text-xs tracking-widest uppercase text-gray-500 mb-3">
-                  <Clock size={12} className="inline mr-1" />Créneau Horaire
+                  <Clock size={12} className="inline mr-1" />
+                  Créneau Horaire
                 </label>
+
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {timeSlots.map((slot) => (
                     <button
@@ -312,14 +429,21 @@ export default function Booking() {
                   ))}
                 </div>
               </div>
+
               <div className="flex gap-4">
-                <button onClick={() => setStep(0)} className="btn-outline-gold flex-1">
+                <button
+                  onClick={() => setStep(0)}
+                  className="btn-outline-gold flex-1"
+                >
                   Retour
                 </button>
+
                 <button
                   disabled={!canProceedStep1}
                   onClick={() => setStep(2)}
-                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${!canProceedStep1 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${
+                    !canProceedStep1 ? 'opacity-40 cursor-not-allowed' : ''
+                  }`}
                 >
                   Continuer <ChevronRight size={16} />
                 </button>
@@ -329,12 +453,20 @@ export default function Booking() {
 
           {step === 2 && (
             <div className="fade-in">
-              <h2 className="text-white text-xl font-bold mb-6 flex items-center gap-3" style={{ fontFamily: 'Playfair Display, serif' }}>
-                <User size={20} className="text-gold" /> Vos Coordonnées
+              <h2
+                className="text-white text-xl font-bold mb-6 flex items-center gap-3"
+                style={{ fontFamily: 'Playfair Display, serif' }}
+              >
+                <User size={20} className="text-gold" />
+                Vos Coordonnées
               </h2>
+
               <div className="space-y-5 mb-8">
                 <div>
-                  <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">Nom Complet *</label>
+                  <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                    Nom Complet *
+                  </label>
+
                   <input
                     type="text"
                     name="full_name"
@@ -345,9 +477,13 @@ export default function Booking() {
                     className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200 placeholder-gray-600"
                   />
                 </div>
+
                 <div className="grid sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">Email *</label>
+                    <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                      Email *
+                    </label>
+
                     <input
                       type="email"
                       name="email"
@@ -358,8 +494,12 @@ export default function Booking() {
                       className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200 placeholder-gray-600"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">Téléphone *</label>
+                    <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                      Téléphone *
+                    </label>
+
                     <input
                       type="tel"
                       name="phone"
@@ -371,8 +511,12 @@ export default function Booking() {
                     />
                   </div>
                 </div>
+
                 <div>
-                  <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">Notes Additionnelles</label>
+                  <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                    Notes Additionnelles
+                  </label>
+
                   <textarea
                     name="notes"
                     value={form.notes}
@@ -383,12 +527,21 @@ export default function Booking() {
                   />
                 </div>
               </div>
+
               <div className="flex gap-4">
-                <button onClick={() => setStep(1)} className="btn-outline-gold flex-1">Retour</button>
+                <button
+                  onClick={() => setStep(1)}
+                  className="btn-outline-gold flex-1"
+                >
+                  Retour
+                </button>
+
                 <button
                   disabled={!canProceedStep2}
                   onClick={() => setStep(3)}
-                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${!canProceedStep2 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${
+                    !canProceedStep2 ? 'opacity-40 cursor-not-allowed' : ''
+                  }`}
                 >
                   Continuer <ChevronRight size={16} />
                 </button>
@@ -398,25 +551,43 @@ export default function Booking() {
 
           {step === 3 && (
             <div className="fade-in">
-              <h2 className="text-white text-xl font-bold mb-6 flex items-center gap-3" style={{ fontFamily: 'Playfair Display, serif' }}>
-                <CreditCard size={20} className="text-gold" /> Mode de Paiement
+              <h2
+                className="text-white text-xl font-bold mb-6 flex items-center gap-3"
+                style={{ fontFamily: 'Playfair Display, serif' }}
+              >
+                <CreditCard size={20} className="text-gold" />
+                Mode de Paiement
               </h2>
+
               <p className="text-gray-500 text-sm mb-6">
                 Choisissez votre méthode de paiement. Le paiement mobile est sécurisé et instantané.
               </p>
+
               <div className="grid sm:grid-cols-3 gap-4 mb-6">
                 {paymentMethods.map((pm) => (
                   <div
                     key={pm.id}
-                    onClick={() => setForm({ ...form, payment_method: pm.id, payment_phone: pm.id === 'cash' ? '' : form.payment_phone })}
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        payment_method: pm.id,
+                        payment_phone: pm.id === 'cash' ? '' : form.payment_phone,
+                      })
+                    }
                     className={`p-5 border cursor-pointer transition-all duration-200 text-center ${
-                      form.payment_method === pm.id ? pm.activeColor : pm.color
+                      form.payment_method === pm.id
+                        ? pm.activeColor
+                        : pm.color
                     }`}
                   >
                     <div className="text-2xl mb-2">{pm.icon}</div>
+
                     <p className="text-white text-sm font-medium">{pm.label}</p>
+
                     {pm.id !== 'cash' && (
-                      <p className="text-gray-600 text-xs mt-1">Paiement mobile</p>
+                      <p className="text-gray-600 text-xs mt-1">
+                        Paiement mobile
+                      </p>
                     )}
                   </div>
                 ))}
@@ -428,30 +599,67 @@ export default function Booking() {
                     <Smartphone size={12} />
                     Numéro {form.payment_method === 'mvola' ? 'Mvola' : 'Airtel Money'} *
                   </label>
+
                   <input
                     type="tel"
                     name="payment_phone"
                     value={form.payment_phone}
                     onChange={handleChange}
-                    placeholder={form.payment_method === 'mvola' ? '034 XX XXX XX' : '033 XX XXX XX'}
+                    placeholder={
+                      form.payment_method === 'mvola'
+                        ? '034 XX XXX XX'
+                        : '033 XX XXX XX'
+                    }
                     className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200 placeholder-gray-600"
                   />
+
                   <p className="text-gray-600 text-xs mt-2">
-                    Le paiement de <span className="text-gold">{selectedService?.price.toLocaleString() ?? '–'} Ar</span> sera initié après confirmation de votre rendez-vous.
+                    Le paiement de{' '}
+                    <span className="text-gold">
+                      {selectedService?.price.toLocaleString() ?? '–'} Ar
+                    </span>{' '}
+                    sera initié après confirmation de votre rendez-vous.
                   </p>
                 </div>
               )}
 
               <div className="card-dark p-5 mb-6">
-                <p className="text-xs tracking-widest uppercase text-gray-600 mb-4">Récapitulatif</p>
+                <p className="text-xs tracking-widest uppercase text-gray-600 mb-4">
+                  Récapitulatif
+                </p>
+
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-gray-500">Service</span><span className="text-white">{form.service}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="text-white">{form.appointment_date ? new Date(form.appointment_date).toLocaleDateString('fr-FR') : '–'}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Heure</span><span className="text-white">{form.appointment_time}</span></div>
-                  {form.barber_name && <div className="flex justify-between"><span className="text-gray-500">Barbier</span><span className="text-white">{form.barber_name}</span></div>}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Service</span>
+                    <span className="text-white">{form.service}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Date</span>
+                    <span className="text-white">
+                      {form.appointment_date
+                        ? new Date(form.appointment_date).toLocaleDateString('fr-FR')
+                        : '–'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Heure</span>
+                    <span className="text-white">{form.appointment_time}</span>
+                  </div>
+
+                  {form.barber_name && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Barbier</span>
+                      <span className="text-white">{form.barber_name}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between pt-2 border-t border-gray-800">
                     <span className="text-gray-500">Total</span>
-                    <span className="text-gold font-bold text-base">{selectedService?.price.toLocaleString() ?? '–'} Ar</span>
+                    <span className="text-gold font-bold text-base">
+                      {selectedService?.price.toLocaleString() ?? '–'} Ar
+                    </span>
                   </div>
                 </div>
               </div>
@@ -463,16 +671,32 @@ export default function Booking() {
               )}
 
               <div className="flex gap-4">
-                <button onClick={() => setStep(2)} className="btn-outline-gold flex-1">Retour</button>
+                <button
+                  onClick={() => setStep(2)}
+                  className="btn-outline-gold flex-1"
+                >
+                  Retour
+                </button>
+
                 <button
                   disabled={!canProceedStep3 || loading}
                   onClick={handleSubmit}
-                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${(!canProceedStep3 || loading) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${
+                    !canProceedStep3 || loading
+                      ? 'opacity-60 cursor-not-allowed'
+                      : ''
+                  }`}
                 >
                   {loading ? (
-                    <><span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" /> Traitement...</>
+                    <>
+                      <span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+                      Traitement...
+                    </>
                   ) : (
-                    <><CheckCircle size={16} /> Confirmer la Réservation</>
+                    <>
+                      <CheckCircle size={16} />
+                      Confirmer la Réservation
+                    </>
                   )}
                 </button>
               </div>
