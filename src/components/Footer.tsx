@@ -45,7 +45,7 @@ export default function Footer({ onNavigate }: FooterProps) {
                 className="w-9 h-9 rounded-full border border-gray-700 flex items-center justify-center text-gray-400 hover:border-amber-500 hover:text-amber-400 transition-all duration-300">
                 <Twitter size={15} />
               </a>
-              <a href="https://wa.me/261340000000" target="_blank" rel="noopener noreferrer"
+              <a href="https://wa.me/261341458773" target="_blank" rel="noopener noreferrer"
                 className="w-9 h-9 rounded-full border border-gray-700 flex items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-400 transition-all duration-300">
                 <MessageCircle size={15} />
               </a>

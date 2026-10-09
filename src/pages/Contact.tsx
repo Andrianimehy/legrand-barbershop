@@ -72,8 +72,8 @@ export default function Contact({ onNavigate: _onNavigate }: ContactProps) {
                   </div>
                   <div>
                     <p className="text-white font-medium mb-1">Téléphone</p>
-                    <a href="tel:+261340000000" className="text-gray-400 text-sm hover:text-gold transition-colors">
-                      +261 34 00 000 00
+                    <a href="tel:+261341458773" className="text-gray-400 text-sm hover:text-gold transition-colors">
+                      +261 34 145 87 73
                     </a>
                   </div>
                 </div>
@@ -107,7 +107,7 @@ export default function Contact({ onNavigate: _onNavigate }: ContactProps) {
 
               <div className="mb-10">
                 <a
-                  href="https://wa.me/261340000000?text=Bonjour%2C%20je%20souhaite%20prendre%20rendez-vous"
+                  href="https://wa.me/261341458773?text=Bonjour%2C%20je%20souhaite%20prendre%20rendez-vous"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 bg-green-900/20 border border-green-700/40 hover:border-green-500 px-5 py-3 transition-all duration-300 group w-fit"
