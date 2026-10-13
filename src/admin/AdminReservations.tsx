@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 
 interface Reservation {
   id: string;
+  price?: number | null;
   full_name: string;
   email: string;
   phone: string;
@@ -49,14 +50,35 @@ export default function AdminReservations() {
   const [sortField, setSortField] = useState<'appointment_date' | 'created_at'>('appointment_date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  const formatPrice = (amount?: number | null) =>
+    amount == null || !Number.isFinite(Number(amount))
+      ? 'Tarif indisponible'
+      : `${Number(amount).toLocaleString('fr-FR')} Ar`;
+
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('reservations')
-      .select('*')
-      .order(sortField, { ascending: sortDir === 'asc' });
-    if (data) {
-      setReservations(data as Reservation[]);
+    const [{ data: reservationData }, { data: servicesData }, { data: paymentsData }] = await Promise.all([
+      supabase.from('reservations').select('*').order(sortField, { ascending: sortDir === 'asc' }),
+      supabase.from('services').select('name, price'),
+      supabase.from('payments').select('reservation_id, amount').order('created_at', { ascending: false }),
+    ]);
+
+    const servicePrices = new Map<string, number>();
+    (servicesData ?? []).forEach((service: { name: string; price: number }) => {
+      servicePrices.set(service.name.trim().toLowerCase(), Number(service.price));
+    });
+    const paymentAmounts = new Map<string, number>();
+    (paymentsData ?? []).forEach((payment: { reservation_id: string; amount: number }) => {
+      if (!paymentAmounts.has(payment.reservation_id) && payment.amount != null) {
+        paymentAmounts.set(payment.reservation_id, Number(payment.amount));
+      }
+    });
+
+    if (reservationData) {
+      setReservations((reservationData as Reservation[]).map((reservation) => ({
+        ...reservation,
+        price: paymentAmounts.get(reservation.id) ?? servicePrices.get(reservation.service?.trim().toLowerCase()),
+      })));
     }
     setLoading(false);
   };
@@ -145,11 +167,12 @@ export default function AdminReservations() {
       <div className="bg-[#111111] border border-gray-800">
         <div className="hidden lg:grid grid-cols-12 px-5 py-3 border-b border-gray-800 text-xs text-gray-600 tracking-wider uppercase">
           <div className="col-span-3">Client</div>
-          <div className="col-span-3">Service</div>
+          <div className="col-span-2">Service</div>
           <div className="col-span-2 cursor-pointer flex items-center gap-1 hover:text-gray-400" onClick={() => toggleSort('appointment_date')}>
             Rendez-vous <SortIcon field="appointment_date" />
           </div>
           <div className="col-span-2">Paiement</div>
+          <div className="col-span-1">Tarif</div>
           <div className="col-span-1">Statut</div>
           <div className="col-span-1 text-center">Actions</div>
         </div>
@@ -168,7 +191,7 @@ export default function AdminReservations() {
                     <p className="text-white text-sm font-medium">{r.full_name}</p>
                     <p className="text-gray-600 text-xs mt-0.5">{r.phone}</p>
                   </div>
-                  <div className="col-span-3">
+                  <div className="col-span-2">
                     <p className="text-gray-300 text-sm">{r.service}</p>
                     {r.barber_name && <p className="text-gray-600 text-xs mt-0.5">{r.barber_name}</p>}
                   </div>
@@ -182,6 +205,9 @@ export default function AdminReservations() {
                     <p className="text-gray-400 text-sm">{paymentLabel[r.payment_method] ?? r.payment_method}</p>
                     {r.payment_phone && <p className="text-gray-600 text-xs mt-0.5">{r.payment_phone}</p>}
                   </div>
+                  <div className="col-span-1 flex items-center">
+                    <span className="text-amber-300 text-xs font-bold whitespace-nowrap">{formatPrice(r.price)}</span>
+                  </div>
                   <div className="col-span-1">
                     <span className={`px-2 py-0.5 text-xs border ${statusStyle[r.status] ?? 'text-gray-400'}`}>
                       {statusLabel[r.status] ?? r.status}
@@ -193,18 +219,21 @@ export default function AdminReservations() {
                 </div>
 
                 <div className="lg:hidden px-4 py-4 hover:bg-gray-900/30 cursor-pointer" onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0 flex-1">
                       <p className="text-white text-sm font-medium">{r.full_name}</p>
-                      <p className="text-gray-500 text-xs">{r.service}</p>
+                      <p className="text-gray-500 text-xs break-words">{r.service}</p>
                     </div>
-                    <span className={`px-2 py-0.5 text-xs border ${statusStyle[r.status] ?? 'text-gray-400'}`}>
+                    <span className={`shrink-0 px-2 py-0.5 text-xs border ${statusStyle[r.status] ?? 'text-gray-400'}`}>
                       {statusLabel[r.status] ?? r.status}
                     </span>
                   </div>
-                  <p className="text-gray-600 text-xs">
-                    {r.appointment_date ? new Date(r.appointment_date).toLocaleDateString('fr-FR') : '–'} à {r.appointment_time}
-                  </p>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <p className="text-gray-600 text-xs">
+                      {r.appointment_date ? new Date(r.appointment_date).toLocaleDateString('fr-FR') : '–'} à {r.appointment_time}
+                    </p>
+                    <p className="text-amber-300 text-sm font-bold whitespace-nowrap">{formatPrice(r.price)}</p>
+                  </div>
                 </div>
 
                 {expandedId === r.id && (
@@ -238,9 +267,13 @@ export default function AdminReservations() {
                       <div>
                         <p className="text-xs tracking-widest uppercase text-gray-600 mb-3">Détails du Rendez-vous</p>
                         <div className="space-y-1.5 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Service</span>
-                            <span className="text-gray-300">{r.service}</span>
+                          <div className="flex justify-between gap-3">
+                            <span className="text-gray-600 shrink-0">Service</span>
+                            <span className="text-gray-300 text-right break-words">{r.service}</span>
+                          </div>
+                          <div className="flex justify-between items-center gap-3 border-t border-gray-800 pt-2 mt-2">
+                            <span className="text-gray-400 font-medium">Tarif</span>
+                            <span className="text-amber-300 text-lg font-bold">{formatPrice(r.price)}</span>
                           </div>
                           {r.barber_name && (
                             <div className="flex justify-between">
