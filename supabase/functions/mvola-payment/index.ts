@@ -54,67 +54,78 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Réutiliser le paiement créé automatiquement avec la réservation.
-      // Le fallback INSERT permet aussi de fonctionner si le trigger SQL n'est pas encore déployé.
-      const { data: existingPayments, error: lookupError } = await supabase
+      // Réutiliser le paiement créé automatiquement par le trigger SQL.
+      // Le statut est conservé : seul l'administrateur peut confirmer la réception.
+      const { data: existingPayment, error: lookupError } = await supabase
         .from("payments")
-        .select("id")
+        .select("id, status")
         .eq("reservation_id", reservation_id)
-        .order("created_at", { ascending: true })
-        .limit(1);
+        .maybeSingle();
 
       if (lookupError) throw lookupError;
 
-      let paymentId = existingPayments?.[0]?.id as string | undefined;
+      let paymentId: string;
+      let paymentStatus: string;
 
-      if (paymentId) {
-        const { error: updateProcessingError } = await supabase
+      if (existingPayment) {
+        paymentId = existingPayment.id;
+        paymentStatus = existingPayment.status;
+
+        const { error: updateError } = await supabase
           .from("payments")
           .update({
             amount,
             phone_number,
             payment_method: "mvola",
-            status: "processing",
             updated_at: new Date().toISOString(),
           })
           .eq("id", paymentId);
 
-        if (updateProcessingError) throw updateProcessingError;
+        if (updateError) throw updateError;
       } else {
-        const { data: payment, error: paymentError } = await supabase
+        // Normalement le trigger a déjà créé la ligne. Ce fallback couvre
+        // les cas où le trigger n'est pas installé. L'index unique protège
+        // contre deux créations simultanées pour la même réservation.
+        const { data: insertedPayment, error: insertError } = await supabase
           .from("payments")
           .insert({
             reservation_id,
             amount,
             phone_number,
             payment_method: "mvola",
-            status: "processing",
+            status: "pending",
           })
-          .select("id")
+          .select("id, status")
           .single();
 
-        if (paymentError) throw paymentError;
-        paymentId = payment.id;
+        if (insertError) {
+          // Si un appel concurrent a créé la ligne entre-temps,
+          // récupérer cette ligne au lieu de créer un doublon.
+          if (insertError.code !== "23505") throw insertError;
+
+          const { data: concurrentPayment, error: concurrentLookupError } = await supabase
+            .from("payments")
+            .select("id, status")
+            .eq("reservation_id", reservation_id)
+            .maybeSingle();
+
+          if (concurrentLookupError) throw concurrentLookupError;
+          if (!concurrentPayment) throw insertError;
+
+          paymentId = concurrentPayment.id;
+          paymentStatus = concurrentPayment.status;
+        } else {
+          paymentId = insertedPayment.id;
+          paymentStatus = insertedPayment.status;
+        }
       }
-
-      // Mode de démonstration : l'intégration réelle du fournisseur doit confirmer le paiement.
-      const { error: updateError } = await supabase
-        .from("payments")
-        .update({
-          status: "pending",
-          transaction_id: `MVOLA-${Date.now()}`,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", paymentId);
-
-      if (updateError) throw updateError;
 
       return new Response(
         JSON.stringify({
           success: true,
-          payment_id: payment.id,
-          status: "pending",
-          message: `Requête de paiement de ${amount} Ar envoyée à ${phone_number}. Veuillez confirmer sur votre téléphone Mvola.`,
+          payment_id: paymentId,
+          status: paymentStatus,
+          message: `Paiement en attente de vérification manuelle. Après réception du transfert de ${amount} Ar sur MVola, l'administrateur pourra confirmer le paiement.`,
           amount,
           phone_number: phone_number.replace(/\d(?=\d{2})/g, "*"),
         }),
