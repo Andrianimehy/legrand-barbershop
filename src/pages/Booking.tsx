@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, User, CreditCard, CheckCircle, ChevronRight, Smartphone, Copy, Banknote, Wallet } from 'lucide-react';
+import { Calendar, Clock, User, CreditCard, CheckCircle, ChevronRight, Copy, Banknote } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { barbers, timeSlots } from '../data/barbershop';
 import { Reservation } from '../types';
@@ -13,10 +13,10 @@ interface ServiceItem {
 }
 
 const paymentMethods = [
-  { id: 'mvola', label: 'MVola', subtitle: 'Paiement mobile', icon: '📱', color: 'border-gray-800 hover:border-amber-500/70', activeColor: 'border-amber-400 bg-amber-500/10 ring-1 ring-amber-400/50' },
-  { id: 'orange', label: 'Orange Money', subtitle: 'Paiement mobile', icon: '🟠', color: 'border-gray-800 hover:border-orange-500/70', activeColor: 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50' },
-  { id: 'airtel', label: 'Airtel Money', subtitle: 'Paiement mobile', icon: '📲', color: 'border-gray-800 hover:border-red-500/70', activeColor: 'border-red-500 bg-red-500/10 ring-1 ring-red-500/50' },
-  { id: 'cash', label: 'Espèces', subtitle: 'Paiement en boutique', icon: '💵', color: 'border-gray-800 hover:border-emerald-500/70', activeColor: 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/50' },
+  { id: 'mvola', label: 'MVola', subtitle: 'Paiement mobile', mark: 'MVola', color: 'text-yellow-400', colorClass: 'border-gray-800 hover:border-yellow-400/70', activeColor: 'border-yellow-400 bg-yellow-400/10 ring-1 ring-yellow-400/50' },
+  { id: 'orange', label: 'Orange Money', subtitle: 'Paiement mobile', mark: 'Orange', color: 'text-orange-500', colorClass: 'border-gray-800 hover:border-orange-500/70', activeColor: 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50' },
+  { id: 'airtel', label: 'Airtel Money', subtitle: 'Paiement mobile', mark: 'airtel', color: 'text-red-500', colorClass: 'border-gray-800 hover:border-red-500/70', activeColor: 'border-red-500 bg-red-500/10 ring-1 ring-red-500/50' },
+  { id: 'cash', label: 'Espèces', subtitle: 'Paiement en boutique', mark: 'CASH', color: 'text-emerald-400', colorClass: 'border-gray-800 hover:border-emerald-500/70', activeColor: 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/50' },
 ];
 
 const paymentDestinations: Record<string, { number: string; label: string }> = {
@@ -25,6 +25,14 @@ const paymentDestinations: Record<string, { number: string; label: string }> = {
 };
 
 const steps = ['Service', 'Date & Heure', 'Coordonnées', 'Paiement', 'Confirmation'];
+
+// Référence courte à communiquer dans le motif du transfert (8 caractères alphanumériques).
+const createPaymentReference = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => chars[byte % chars.length]).join('');
+};
 
 const initialForm: Reservation = {
   full_name: '',
@@ -47,6 +55,7 @@ export default function Booking() {
   const [error, setError] = useState('');
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [reservationId, setReservationId] = useState(() => crypto.randomUUID());
+  const [paymentReference, setPaymentReference] = useState(() => createPaymentReference());
   const [copiedReference, setCopiedReference] = useState(false);
   const bookingCardRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +110,7 @@ export default function Booking() {
         .insert([
           {
             ...form,
+            notes: [form.notes?.trim(), `Référence paiement: ${paymentReference}`].filter(Boolean).join('\n'),
             id: reservationId,
           },
         ]);
@@ -121,7 +131,7 @@ export default function Booking() {
               body: JSON.stringify({
                 reservation_id: reservationId,
                 amount: selectedService.price,
-                phone_number: form.payment_phone,
+                phone_number: form.phone,
               }),
             }
           );
@@ -146,7 +156,7 @@ export default function Booking() {
   const canProceedStep0 = !!form.service;
   const canProceedStep1 = !!form.appointment_date && !!form.appointment_time;
   const canProceedStep2 = !!form.full_name && !!form.email && !!form.phone;
-  const canProceedStep3 = form.payment_method === 'cash' || !!form.payment_phone;
+  const canProceedStep3 = true;
 
   if (success) {
     const paymentPending = form.payment_method !== 'cash';
@@ -178,17 +188,15 @@ export default function Booking() {
               </p>
 
               <p className="text-gray-400 text-xs">
-                Un paiement de{' '}
+                Le montant de{' '
                 <span className="text-gold font-bold">
                   {selectedService?.price.toLocaleString() ?? '–'} Ar
                 </span>{' '}
-                a été envoyée à votre numéro{' '}
-                <span className="text-gold">{form.payment_phone}</span>.
+                est à transférer au numéro indiqué ci-dessous, avec la référence de paiement{' '}
+                <span className="text-gold font-mono font-bold tracking-widest">{paymentReference}</span> comme motif.
               </p>
 
-              <p className="text-gray-500 text-xs mt-2">
-                Effectuez le transfert vers le numéro indiqué à l’étape Paiement, avec votre référence de commande comme motif.
-              </p>
+              <p className="text-gray-500 text-xs mt-2">Conservez le reçu de transfert pour faciliter la vérification du paiement.</p>
             </div>
           )}
 
@@ -224,7 +232,7 @@ export default function Booking() {
 
             <div className="flex justify-between gap-4 text-sm border-t border-gray-800 pt-2 mt-2">
               <span className="text-gray-500 shrink-0">Référence</span>
-              <span className="text-amber-300 font-mono text-xs break-all text-right">{reservationId}</span>
+              <span className="text-amber-300 font-mono text-sm tracking-widest text-right">{paymentReference}</span>
             </div>
 
             <div className="flex justify-between text-sm border-t border-gray-800 pt-2 mt-2">
@@ -247,6 +255,7 @@ export default function Booking() {
               setForm(initialForm);
               setStep(0);
               setReservationId(crypto.randomUUID());
+              setPaymentReference(createPaymentReference());
               setCopiedReference(false);
             }}
             className="btn-gold w-full"
@@ -594,10 +603,12 @@ export default function Booking() {
                     key={pm.id}
                     onClick={() => setForm({ ...form, payment_method: pm.id, payment_phone: pm.id === 'cash' ? '' : form.payment_phone })}
                     aria-pressed={form.payment_method === pm.id}
-                    className={`relative rounded-xl p-5 sm:p-6 border transition-all duration-200 text-center min-h-36 ${form.payment_method === pm.id ? pm.activeColor : pm.color}`}
+                    className={`relative rounded-xl p-5 sm:p-6 border transition-all duration-200 text-center min-h-36 ${form.payment_method === pm.id ? pm.activeColor : pm.colorClass}`}
                   >
                     {form.payment_method === pm.id && <span className="absolute top-3 right-3 text-amber-300"><CheckCircle size={18} /></span>}
-                    <div className="text-3xl mb-3">{pm.icon}</div>
+                    <div className={`mx-auto mb-3 flex h-12 min-w-16 w-fit items-center justify-center rounded-xl bg-black/30 px-3 text-lg font-black italic tracking-tight ${pm.color}`}>
+                      {pm.id === 'cash' ? <Banknote size={30} strokeWidth={1.8} /> : pm.mark}
+                    </div>
                     <p className="text-white text-sm font-semibold">{pm.label}</p>
                     <p className="text-gray-500 text-xs mt-2">{pm.subtitle}</p>
                   </button>
@@ -608,7 +619,7 @@ export default function Booking() {
                 <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-[#0d0d0d] p-5 sm:p-6">
                   <div className="flex items-start gap-3 mb-5">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-300 text-xl">
-                      {form.payment_method === 'mvola' ? '📱' : form.payment_method === 'orange' ? '🟠' : '📲'}
+                      {form.payment_method === 'mvola' ? <span className="font-black italic text-yellow-400">M</span> : form.payment_method === 'orange' ? <span className="font-black text-orange-500">O</span> : <span className="font-black italic text-red-500">A</span>}
                     </div>
                     <div>
                       <h3 className="text-white text-lg font-semibold">Instructions de paiement — {paymentMethods.find((pm) => pm.id === form.payment_method)?.label}</h3>
@@ -621,12 +632,7 @@ export default function Booking() {
                     <p className="text-3xl sm:text-4xl font-bold text-amber-300 mt-1">{selectedService?.price.toLocaleString('fr-FR') ?? '–'} Ar</p>
                   </div>
 
-                  {form.payment_method === 'airtel' ? (
-                    <div className="rounded-xl border border-gray-700 bg-black/20 p-4 mb-4">
-                      <p className="text-white font-medium">Airtel Money</p>
-                      <p className="text-gray-400 text-sm mt-1">Le numéro de réception Airtel Money doit être confirmé par la boutique avant le transfert.</p>
-                    </div>
-                  ) : (
+                  {form.payment_method !== 'airtel' && (
                     <div className="space-y-3 mb-4">
                       <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-800 bg-black/20 p-4">
                         <div>
@@ -646,22 +652,15 @@ export default function Booking() {
 
                   <div className="rounded-xl border border-gray-800 bg-black/20 p-4 mb-4">
                     <p className="text-gray-500 text-xs mb-1">Référence / raison du transfert</p>
-                    <p className="text-white font-mono text-sm break-all">{reservationId}</p>
+                    <p className="text-white font-mono text-lg font-bold tracking-[0.2em]">{paymentReference}</p>
                     <p className="text-gray-400 text-xs mt-2">Indiquez cette référence comme motif du transfert.</p>
-                    <button type="button" onClick={() => { navigator.clipboard?.writeText(reservationId); setCopiedReference(true); }} className="mt-3 inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200">
+                    <button type="button" onClick={() => { navigator.clipboard?.writeText(paymentReference); setCopiedReference(true); }} className="mt-3 inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200">
                       <Copy size={14} /> {copiedReference ? 'Référence copiée' : 'Copier la référence'}
                     </button>
                   </div>
 
                   <p className="text-gray-400 text-sm leading-relaxed">Après le transfert, conservez votre reçu. La réservation sera enregistrée avec cette référence pour permettre à la boutique de vérifier le paiement.</p>
 
-                  <div className="mt-5 pt-5 border-t border-gray-800">
-                    <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2 flex items-center gap-2">
-                      <Smartphone size={12} /> Votre numéro de téléphone *
-                    </label>
-                    <input type="tel" name="payment_phone" value={form.payment_phone} onChange={handleChange} placeholder="034 XX XXX XX" className="w-full rounded-lg bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 placeholder-gray-600" />
-                    <p className="text-gray-600 text-xs mt-2">Ce numéro permet à la boutique de vous contacter au sujet du paiement.</p>
-                  </div>
                 </div>
               )}
 
