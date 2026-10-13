@@ -423,20 +423,48 @@ export default function Booking() {
               )}
 
               <div className="mb-6">
-                <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                <label
+                  htmlFor="appointment_date"
+                  className="block text-xs tracking-widest uppercase text-gray-500 mb-2"
+                >
                   Date du Rendez-vous
                 </label>
 
-                <input
-                  type="date"
-                  name="appointment_date"
-                  value={form.appointment_date}
-                  onChange={handleChange}
-                  min={getTodayDate()}
-                  max={getMaxDate()}
-                  required
-                  className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200"
-                />
+                <div className="relative">
+                  <input
+                    id="appointment_date"
+                    type="date"
+                    name="appointment_date"
+                    value={form.appointment_date}
+                    onChange={handleChange}
+                    min={getTodayDate()}
+                    max={getMaxDate()}
+                    required
+                    className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 pr-12 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200"
+                  />
+
+                  <button
+                    type="button"
+                    aria-label="Ouvrir le calendrier"
+                    onClick={() => {
+                      const input = document.getElementById(
+                        'appointment_date'
+                      ) as HTMLInputElement | null;
+
+                      if (!input) return;
+
+                      if (typeof input.showPicker === 'function') {
+                        input.showPicker();
+                      } else {
+                        input.focus();
+                        input.click();
+                      }
+                    }}
+                    className="absolute right-0 top-0 h-full px-4 flex items-center justify-center text-amber-400 hover:text-amber-300 transition-colors"
+                  >
+                    <Calendar size={20} />
+                  </button>
+                </div>
               </div>
 
               <div className="mb-8">
