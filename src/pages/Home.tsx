@@ -55,7 +55,7 @@ export default function Home({ onNavigate }: HomeProps) {
 
   return (
     <div className="bg-[#0a0a0a]">
-      <section className="relative h-screen overflow-hidden flex items-center">
+      <section className="relative h-[540px] min-h-[540px] sm:h-screen sm:min-h-screen overflow-hidden flex items-center">
         <div
           ref={heroRef}
           className="absolute inset-0 w-full h-full"
@@ -68,31 +68,31 @@ export default function Home({ onNavigate }: HomeProps) {
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="max-w-3xl fade-in">
-            <p className="text-gold tracking-[0.4em] uppercase text-xs mb-4 font-medium">
+          <div className="max-w-3xl fade-in py-10 sm:py-0">
+            <p className="text-gold tracking-[0.3em] sm:tracking-[0.4em] uppercase text-[10px] sm:text-xs mb-3 sm:mb-4 font-medium">
               — Antananarivo, Madagascar
             </p>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] mb-6"
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.05] sm:leading-[1.1] mb-4 sm:mb-6"
               style={{ fontFamily: 'Playfair Display, serif' }}>
               L'Art du{' '}
               <span className="gold-text block">Style Masculin</span>
             </h1>
-            <p className="text-gray-300 text-lg leading-relaxed mb-10 max-w-xl">
+            <p className="text-gray-300 text-sm sm:text-lg leading-relaxed mb-6 sm:mb-10 max-w-xl">
               Découvrez une expérience de coiffure d'exception. Coupes précises, rasage traditionnel
               et soins premium pour révéler votre meilleur style.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <button onClick={() => handleNav('booking')} className="btn-gold text-sm px-8 py-3.5">
+            <div className="flex flex-wrap gap-3 sm:gap-4">
+              <button onClick={() => handleNav('booking')} className="btn-gold text-xs sm:text-sm px-5 sm:px-8 py-3 sm:py-3.5">
                 Prendre Rendez-vous
               </button>
-              <button onClick={() => handleNav('services')} className="btn-outline-gold text-sm px-8 py-3.5">
+              <button onClick={() => handleNav('services')} className="btn-outline-gold text-xs sm:text-sm px-5 sm:px-8 py-3 sm:py-3.5">
                 Nos Services
               </button>
             </div>
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+        <div className="absolute bottom-3 sm:bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
           <ChevronDown size={24} className="text-gold opacity-70" />
         </div>
       </section>
