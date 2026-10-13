@@ -188,7 +188,7 @@ export default function Booking() {
               </p>
 
               <p className="text-gray-400 text-xs">
-                Le montant de{' '
+                Le montant de{' '}
                 <span className="text-gold font-bold">
                   {selectedService?.price.toLocaleString() ?? '–'} Ar
                 </span>{' '}
