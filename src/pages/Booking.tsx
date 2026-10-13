@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, User, CreditCard, CheckCircle, ChevronRight, Smartphone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { barbers, timeSlots } from '../data/barbershop';
@@ -40,6 +40,19 @@ export default function Booking() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const bookingCardRef = useRef<HTMLDivElement>(null);
+
+  // Repositionner le formulaire au même endroit après chaque étape,
+  // notamment sur mobile où la hauteur du contenu change beaucoup.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const card = bookingCardRef.current;
+      if (!card) return;
+      const top = card.getBoundingClientRect().top + window.scrollY - 96;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
 
   useEffect(() => {
     supabase
@@ -297,7 +310,7 @@ export default function Booking() {
           ))}
         </div>
 
-        <div className="card-dark p-8">
+        <div ref={bookingCardRef} className="card-dark p-8 scroll-mt-24">
           {step === 0 && (
             <div className="fade-in">
               <h2
