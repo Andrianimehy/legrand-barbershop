@@ -46,13 +46,20 @@ export default function Booking() {
   // notamment sur mobile où la hauteur du contenu change beaucoup.
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
+      // L'écran de confirmation remplace entièrement le formulaire :
+      // il faut donc revenir en haut, et non conserver le scroll précédent.
+      if (success) {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        return;
+      }
+
       const card = bookingCardRef.current;
       if (!card) return;
       const top = card.getBoundingClientRect().top + window.scrollY - 96;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [step]);
+  }, [step, success]);
 
   useEffect(() => {
     supabase
