@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, User, CreditCard, CheckCircle, ChevronRight, Smartphone } from 'lucide-react';
+import { Calendar, Clock, User, CreditCard, CheckCircle, ChevronRight, Smartphone, Copy, Banknote, Wallet } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { barbers, timeSlots } from '../data/barbershop';
 import { Reservation } from '../types';
@@ -13,10 +13,16 @@ interface ServiceItem {
 }
 
 const paymentMethods = [
-  { id: 'mvola', label: 'Mvola', icon: '📱', color: 'border-red-700/40 hover:border-red-500', activeColor: 'border-red-500 bg-red-900/20' },
-  { id: 'airtel', label: 'Airtel Money', icon: '📲', color: 'border-red-600/40 hover:border-orange-500', activeColor: 'border-orange-500 bg-orange-900/20' },
-  { id: 'cash', label: 'Espèces', icon: '💵', color: 'border-green-700/40 hover:border-green-500', activeColor: 'border-green-500 bg-green-900/20' },
+  { id: 'mvola', label: 'MVola', subtitle: 'Paiement mobile', icon: '📱', color: 'border-gray-800 hover:border-amber-500/70', activeColor: 'border-amber-400 bg-amber-500/10 ring-1 ring-amber-400/50' },
+  { id: 'orange', label: 'Orange Money', subtitle: 'Paiement mobile', icon: '🟠', color: 'border-gray-800 hover:border-orange-500/70', activeColor: 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50' },
+  { id: 'airtel', label: 'Airtel Money', subtitle: 'Paiement mobile', icon: '📲', color: 'border-gray-800 hover:border-red-500/70', activeColor: 'border-red-500 bg-red-500/10 ring-1 ring-red-500/50' },
+  { id: 'cash', label: 'Espèces', subtitle: 'Paiement en boutique', icon: '💵', color: 'border-gray-800 hover:border-emerald-500/70', activeColor: 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/50' },
 ];
+
+const paymentDestinations: Record<string, { number: string; label: string }> = {
+  mvola: { number: '0341458773', label: 'MVola' },
+  orange: { number: '0379894927', label: 'Orange Money' },
+};
 
 const steps = ['Service', 'Date & Heure', 'Coordonnées', 'Paiement', 'Confirmation'];
 
@@ -40,25 +46,16 @@ export default function Booking() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [reservationId, setReservationId] = useState(() => crypto.randomUUID());
+  const [copiedReference, setCopiedReference] = useState(false);
   const bookingCardRef = useRef<HTMLDivElement>(null);
 
-  // Repositionner le formulaire au même endroit après chaque étape,
-  // notamment sur mobile où la hauteur du contenu change beaucoup.
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      // L'écran de confirmation remplace entièrement le formulaire :
-      // il faut donc revenir en haut, et non conserver le scroll précédent.
-      if (success) {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-        return;
-      }
-
-      const card = bookingCardRef.current;
-      if (!card) return;
-      const top = card.getBoundingClientRect().top + window.scrollY - 96;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-    });
-    return () => window.cancelAnimationFrame(frame);
+    if (success) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+    bookingCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [step, success]);
 
   useEffect(() => {
@@ -97,9 +94,7 @@ export default function Booking() {
     setError('');
 
     try {
-      // Générer l'ID avant l'insertion
-      const reservationId = crypto.randomUUID();
-
+      // L'identifiant est créé avant l'envoi afin d'être affiché comme référence de commande.
       // Enregistrer la réservation
       const { error: dbError } = await supabase
         .from('reservations')
@@ -113,7 +108,7 @@ export default function Booking() {
       if (dbError) throw dbError;
 
       // Initialiser le paiement mobile si nécessaire
-      if (form.payment_method !== 'cash' && selectedService) {
+      if (form.payment_method === 'mvola' && selectedService) {
         try {
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mvola-payment`,
@@ -183,7 +178,7 @@ export default function Booking() {
               </p>
 
               <p className="text-gray-400 text-xs">
-                Une requête de paiement de{' '}
+                Un paiement de{' '}
                 <span className="text-gold font-bold">
                   {selectedService?.price.toLocaleString() ?? '–'} Ar
                 </span>{' '}
@@ -192,7 +187,7 @@ export default function Booking() {
               </p>
 
               <p className="text-gray-500 text-xs mt-2">
-                Veuillez confirmer le paiement sur votre téléphone Mvola/Airtel Money.
+                Effectuez le transfert vers le numéro indiqué à l’étape Paiement, avec votre référence de commande comme motif.
               </p>
             </div>
           )}
@@ -227,14 +222,21 @@ export default function Booking() {
               </div>
             )}
 
+            <div className="flex justify-between gap-4 text-sm border-t border-gray-800 pt-2 mt-2">
+              <span className="text-gray-500 shrink-0">Référence</span>
+              <span className="text-amber-300 font-mono text-xs break-all text-right">{reservationId}</span>
+            </div>
+
             <div className="flex justify-between text-sm border-t border-gray-800 pt-2 mt-2">
               <span className="text-gray-500">Paiement</span>
               <span className="text-white capitalize">
                 {form.payment_method === 'mvola'
-                  ? 'Mvola'
-                  : form.payment_method === 'airtel'
-                    ? 'Airtel Money'
-                    : 'Espèces'}
+                  ? 'MVola'
+                  : form.payment_method === 'orange'
+                    ? 'Orange Money'
+                    : form.payment_method === 'airtel'
+                      ? 'Airtel Money'
+                      : 'Espèces'}
               </span>
             </div>
           </div>
@@ -244,6 +246,8 @@ export default function Booking() {
               setSuccess(false);
               setForm(initialForm);
               setStep(0);
+              setReservationId(crypto.randomUUID());
+              setCopiedReference(false);
             }}
             className="btn-gold w-full"
           >
@@ -317,7 +321,7 @@ export default function Booking() {
           ))}
         </div>
 
-        <div ref={bookingCardRef} className="card-dark p-8 scroll-mt-24">
+        <div ref={bookingCardRef} className="card-dark p-5 sm:p-8 scroll-mt-24">
           {step === 0 && (
             <div className="fade-in">
               <h2
@@ -583,63 +587,92 @@ export default function Booking() {
                 Choisissez votre méthode de paiement. Le paiement mobile est sécurisé et instantané.
               </p>
 
-              <div className="grid sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 {paymentMethods.map((pm) => (
-                  <div
+                  <button
+                    type="button"
                     key={pm.id}
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        payment_method: pm.id,
-                        payment_phone: pm.id === 'cash' ? '' : form.payment_phone,
-                      })
-                    }
-                    className={`p-5 border cursor-pointer transition-all duration-200 text-center ${
-                      form.payment_method === pm.id
-                        ? pm.activeColor
-                        : pm.color
-                    }`}
+                    onClick={() => setForm({ ...form, payment_method: pm.id, payment_phone: pm.id === 'cash' ? '' : form.payment_phone })}
+                    aria-pressed={form.payment_method === pm.id}
+                    className={`relative rounded-xl p-5 sm:p-6 border transition-all duration-200 text-center min-h-36 ${form.payment_method === pm.id ? pm.activeColor : pm.color}`}
                   >
-                    <div className="text-2xl mb-2">{pm.icon}</div>
-
-                    <p className="text-white text-sm font-medium">{pm.label}</p>
-
-                    {pm.id !== 'cash' && (
-                      <p className="text-gray-600 text-xs mt-1">
-                        Paiement mobile
-                      </p>
-                    )}
-                  </div>
+                    {form.payment_method === pm.id && <span className="absolute top-3 right-3 text-amber-300"><CheckCircle size={18} /></span>}
+                    <div className="text-3xl mb-3">{pm.icon}</div>
+                    <p className="text-white text-sm font-semibold">{pm.label}</p>
+                    <p className="text-gray-500 text-xs mt-2">{pm.subtitle}</p>
+                  </button>
                 ))}
               </div>
 
               {form.payment_method !== 'cash' && (
-                <div className="mb-6 bg-[#0d0d0d] p-5 border border-gray-800">
-                  <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2 flex items-center gap-2">
-                    <Smartphone size={12} />
-                    Numéro {form.payment_method === 'mvola' ? 'Mvola' : 'Airtel Money'} *
-                  </label>
+                <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-[#0d0d0d] p-5 sm:p-6">
+                  <div className="flex items-start gap-3 mb-5">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-300 text-xl">
+                      {form.payment_method === 'mvola' ? '📱' : form.payment_method === 'orange' ? '🟠' : '📲'}
+                    </div>
+                    <div>
+                      <h3 className="text-white text-lg font-semibold">Instructions de paiement — {paymentMethods.find((pm) => pm.id === form.payment_method)?.label}</h3>
+                      <p className="text-gray-400 text-sm mt-1">Envoyez le montant exact indiqué ci-dessous.</p>
+                    </div>
+                  </div>
 
-                  <input
-                    type="tel"
-                    name="payment_phone"
-                    value={form.payment_phone}
-                    onChange={handleChange}
-                    placeholder={
-                      form.payment_method === 'mvola'
-                        ? '034 XX XXX XX'
-                        : '033 XX XXX XX'
-                    }
-                    className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200 placeholder-gray-600"
-                  />
+                  <div className="rounded-xl border border-amber-400/20 bg-black/30 p-4 mb-4">
+                    <p className="text-gray-400 text-sm">Montant à envoyer</p>
+                    <p className="text-3xl sm:text-4xl font-bold text-amber-300 mt-1">{selectedService?.price.toLocaleString('fr-FR') ?? '–'} Ar</p>
+                  </div>
 
-                  <p className="text-gray-600 text-xs mt-2">
-                    Le paiement de{' '}
-                    <span className="text-gold">
-                      {selectedService?.price.toLocaleString() ?? '–'} Ar
-                    </span>{' '}
-                    sera initié après confirmation de votre rendez-vous.
-                  </p>
+                  {form.payment_method === 'airtel' ? (
+                    <div className="rounded-xl border border-gray-700 bg-black/20 p-4 mb-4">
+                      <p className="text-white font-medium">Airtel Money</p>
+                      <p className="text-gray-400 text-sm mt-1">Le numéro de réception Airtel Money doit être confirmé par la boutique avant le transfert.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-800 bg-black/20 p-4">
+                        <div>
+                          <p className="text-gray-500 text-xs mb-1">Numéro {paymentDestinations[form.payment_method as 'mvola' | 'orange'].label}</p>
+                          <p className="text-white text-lg sm:text-xl font-semibold tracking-wide">{paymentDestinations[form.payment_method as 'mvola' | 'orange'].number}</p>
+                        </div>
+                        <button type="button" onClick={() => navigator.clipboard?.writeText(paymentDestinations[form.payment_method as 'mvola' | 'orange'].number)} className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 px-3 py-2 text-sm text-amber-300 hover:bg-amber-500/10">
+                          <Copy size={15} /> Copier
+                        </button>
+                      </div>
+                      <div className="rounded-xl border border-gray-800 bg-black/20 p-4">
+                        <p className="text-gray-500 text-xs mb-1">Nom du bénéficiaire</p>
+                        <p className="text-white font-semibold">LeGrandBarberShop</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-gray-800 bg-black/20 p-4 mb-4">
+                    <p className="text-gray-500 text-xs mb-1">Référence / raison du transfert</p>
+                    <p className="text-white font-mono text-sm break-all">{reservationId}</p>
+                    <p className="text-gray-400 text-xs mt-2">Indiquez cette référence comme motif du transfert.</p>
+                    <button type="button" onClick={() => { navigator.clipboard?.writeText(reservationId); setCopiedReference(true); }} className="mt-3 inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200">
+                      <Copy size={14} /> {copiedReference ? 'Référence copiée' : 'Copier la référence'}
+                    </button>
+                  </div>
+
+                  <p className="text-gray-400 text-sm leading-relaxed">Après le transfert, conservez votre reçu. La réservation sera enregistrée avec cette référence pour permettre à la boutique de vérifier le paiement.</p>
+
+                  <div className="mt-5 pt-5 border-t border-gray-800">
+                    <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2 flex items-center gap-2">
+                      <Smartphone size={12} /> Votre numéro de téléphone *
+                    </label>
+                    <input type="tel" name="payment_phone" value={form.payment_phone} onChange={handleChange} placeholder="034 XX XXX XX" className="w-full rounded-lg bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 placeholder-gray-600" />
+                    <p className="text-gray-600 text-xs mt-2">Ce numéro permet à la boutique de vous contacter au sujet du paiement.</p>
+                  </div>
+                </div>
+              )}
+
+              {form.payment_method === 'cash' && (
+                <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.06] p-5 sm:p-6 flex items-start gap-4">
+                  <div className="rounded-xl bg-emerald-500/10 p-3 text-2xl">💵</div>
+                  <div>
+                    <h3 className="text-white text-lg font-semibold">Paiement en boutique</h3>
+                    <p className="text-gray-300 text-sm leading-relaxed mt-2">Le paiement s’effectuera en espèces à votre arrivée au salon.</p>
+                    <p className="text-emerald-300 font-semibold mt-3">Montant à régler : {selectedService?.price.toLocaleString('fr-FR') ?? '–'} Ar</p>
+                  </div>
                 </div>
               )}
 
