@@ -39,6 +39,7 @@ const statusStyle: Record<string, string> = {
 const paymentMethodLabel: Record<string, string> = {
   mvola: 'Mvola',
   airtel: 'Airtel Money',
+  orange: 'Orange Money',
   cash: 'Espèces',
 };
 
@@ -46,6 +47,7 @@ export default function AdminPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filtered, setFiltered] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -53,12 +55,16 @@ export default function AdminPayments() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
+    setLoadError('');
+    const { data, error } = await supabase
       .from('payments')
       .select('*, reservations(full_name, service, appointment_date)')
       .order('created_at', { ascending: sortDir === 'asc' });
-    if (data) {
-      setPayments(data as Payment[]);
+    if (error) {
+      console.error('Erreur de chargement des paiements:', error);
+      setLoadError(`Impossible de charger les paiements : ${error.message}`);
+    } else {
+      setPayments((data ?? []) as Payment[]);
     }
     setLoading(false);
   };
@@ -119,6 +125,12 @@ export default function AdminPayments() {
           <RefreshCw size={14} /> Actualiser
         </button>
       </div>
+
+      {loadError && (
+        <div role="alert" className="border border-red-800/50 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+          {loadError}
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[

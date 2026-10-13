@@ -54,35 +54,60 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Create payment record
-      const { data: payment, error: paymentError } = await supabase
+      // Réutiliser le paiement créé automatiquement avec la réservation.
+      // Le fallback INSERT permet aussi de fonctionner si le trigger SQL n'est pas encore déployé.
+      const { data: existingPayments, error: lookupError } = await supabase
         .from("payments")
-        .insert({
-          reservation_id,
-          amount,
-          phone_number,
-          payment_method: "mvola",
-          status: "processing",
-        })
-        .select()
-        .single();
+        .select("id")
+        .eq("reservation_id", reservation_id)
+        .order("created_at", { ascending: true })
+        .limit(1);
 
-      if (paymentError) {
-        throw paymentError;
+      if (lookupError) throw lookupError;
+
+      let paymentId = existingPayments?.[0]?.id as string | undefined;
+
+      if (paymentId) {
+        const { error: updateProcessingError } = await supabase
+          .from("payments")
+          .update({
+            amount,
+            phone_number,
+            payment_method: "mvola",
+            status: "processing",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", paymentId);
+
+        if (updateProcessingError) throw updateProcessingError;
+      } else {
+        const { data: payment, error: paymentError } = await supabase
+          .from("payments")
+          .insert({
+            reservation_id,
+            amount,
+            phone_number,
+            payment_method: "mvola",
+            status: "processing",
+          })
+          .select("id")
+          .single();
+
+        if (paymentError) throw paymentError;
+        paymentId = payment.id;
       }
 
-      // Simulate Mvola API call
+      // Mode de démonstration : l'intégration réelle du fournisseur doit confirmer le paiement.
       const { error: updateError } = await supabase
         .from("payments")
         .update({
           status: "pending",
           transaction_id: `MVOLA-${Date.now()}`,
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", payment.id);
+        .eq("id", paymentId);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       return new Response(
         JSON.stringify({

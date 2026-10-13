@@ -45,7 +45,7 @@ export default function AdminDashboard() {
     { label: 'Total Réservations', value: stats.total, icon: Calendar, color: 'text-amber-400', bg: 'bg-amber-900/20' },
     { label: 'En Attente', value: stats.pending, icon: AlertCircle, color: 'text-yellow-400', bg: 'bg-yellow-900/20' },
     { label: 'Confirmées', value: stats.confirmed, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-900/20' },
-    { label: 'Paiements', value: stats.paymentsCompleted, icon: CreditCard, color: 'text-green-400', bg: 'bg-green-900/20' },
+    { label: 'Paiements complétés', value: stats.paymentsCompleted, icon: CreditCard, color: 'text-green-400', bg: 'bg-green-900/20' },
   ];
 
   const statusBadge = (status: string) => {
