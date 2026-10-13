@@ -58,6 +58,7 @@ export default function Booking() {
   const [paymentReference, setPaymentReference] = useState(() => createPaymentReference());
   const [copiedReference, setCopiedReference] = useState(false);
   const bookingCardRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (success) {
@@ -427,16 +428,45 @@ export default function Booking() {
                   Date du Rendez-vous
                 </label>
 
-                <input
-                  type="date"
-                  name="appointment_date"
-                  value={form.appointment_date}
-                  onChange={handleChange}
-                  min={getTodayDate()}
-                  max={getMaxDate()}
-                  required
-                  className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200"
-                />
+                <div className="relative">
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    name="appointment_date"
+                    value={form.appointment_date}
+                    onChange={handleChange}
+                    min={getTodayDate()}
+                    max={getMaxDate()}
+                    required
+                    onClick={() => {
+                      // Ouvre le calendrier natif au clic sur le champ, notamment sur ordinateur.
+                      const dateInput = dateInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+                      try {
+                        dateInput?.showPicker?.();
+                      } catch {
+                        dateInput?.focus();
+                      }
+                    }}
+                    className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 pr-12 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200 [color-scheme:dark]"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Ouvrir le calendrier"
+                    title="Choisir une date"
+                    onClick={() => {
+                      const dateInput = dateInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+                      try {
+                        dateInput?.showPicker?.();
+                      } catch {
+                        dateInput?.focus();
+                        dateInput?.click();
+                      }
+                    }}
+                    className="absolute inset-y-0 right-0 flex items-center justify-center px-4 text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                  >
+                    <Calendar size={18} aria-hidden="true" />
+                  </button>
+                </div>
               </div>
 
               <div className="mb-8">
