@@ -58,7 +58,6 @@ export default function Booking() {
   const [paymentReference, setPaymentReference] = useState(() => createPaymentReference());
   const [copiedReference, setCopiedReference] = useState(false);
   const bookingCardRef = useRef<HTMLDivElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (success) {
@@ -163,19 +162,19 @@ export default function Booking() {
     const paymentPending = form.payment_method !== 'cash';
 
     return (
-      <div className="bg-[#0a0a0a] min-h-screen pt-20 flex items-center justify-center px-4">
-        <div className="max-w-lg w-full text-center card-dark p-12">
-          <div className="w-20 h-20 rounded-full border-2 border-amber-500 flex items-center justify-center mx-auto mb-6 scale-in">
-            <CheckCircle size={36} className="text-gold" />
+      <div className="bg-[#0a0a0a] min-h-screen pt-20 sm:pt-24 pb-8 flex items-start sm:items-center justify-center px-3 sm:px-4 overflow-x-hidden">
+        <div className="max-w-lg w-full min-w-0 text-center card-dark p-4 sm:p-8 md:p-12">
+          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full border-2 border-amber-500 flex items-center justify-center mx-auto mb-4 sm:mb-6 scale-in">
+            <CheckCircle size={28} className="text-gold sm:w-9 sm:h-9" />
           </div>
 
-          <h2 className="section-title text-white mb-3">
+          <h2 className="section-title text-white text-3xl sm:text-4xl leading-tight mb-3 break-words">
             Réservation Confirmée !
           </h2>
 
           <div className="gold-divider" />
 
-          <p className="text-gray-400 mb-6 text-sm leading-relaxed">
+          <p className="text-gray-400 mb-5 sm:mb-6 text-sm sm:text-base leading-relaxed break-words">
             Merci <span className="text-white font-medium">{form.full_name}</span> !
             Votre rendez-vous a été enregistré.
             Nous vous contacterons au{' '}
@@ -183,33 +182,33 @@ export default function Booking() {
           </p>
 
           {paymentPending && (
-            <div className="bg-amber-900/20 border border-amber-800/40 rounded px-4 py-3 mb-6">
+            <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg px-3 sm:px-4 py-3 mb-5 sm:mb-6 text-left">
               <p className="text-amber-300 text-sm font-medium mb-2">
                 Paiement en cours
               </p>
 
-              <p className="text-gray-400 text-xs">
-                Le montant de{' '}
+              <p className="text-gray-400 text-xs sm:text-sm leading-relaxed break-words">
+                Le montant de{' ' }
                 <span className="text-gold font-bold">
                   {selectedService?.price.toLocaleString() ?? '–'} Ar
                 </span>{' '}
                 est à transférer au numéro indiqué ci-dessous, avec la référence de paiement{' '}
-                <span className="text-gold font-mono font-bold tracking-widest">{paymentReference}</span> comme motif.
+                <span className="text-gold font-mono font-bold tracking-normal sm:tracking-widest break-all">{paymentReference}</span> comme motif.
               </p>
 
-              <p className="text-gray-500 text-xs mt-2">Conservez le reçu de transfert pour faciliter la vérification du paiement.</p>
+              <p className="text-gray-500 text-xs leading-relaxed mt-2">Conservez le reçu de transfert pour faciliter la vérification du paiement.</p>
             </div>
           )}
 
-          <div className="card-dark p-5 mb-8 text-left space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Service</span>
-              <span className="text-white">{form.service}</span>
+          <div className="card-dark p-3 sm:p-5 mb-5 sm:mb-8 text-left space-y-3 sm:space-y-2 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-1 text-sm min-w-0">
+              <span className="text-gray-500 shrink-0">Service</span>
+              <span className="text-white sm:text-right break-words min-w-0">{form.service}</span>
             </div>
 
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Date</span>
-              <span className="text-white">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-1 text-sm min-w-0">
+              <span className="text-gray-500 shrink-0">Date</span>
+              <span className="text-white sm:text-right break-words min-w-0">
                 {new Date(form.appointment_date).toLocaleDateString('fr-FR', {
                   weekday: 'long',
                   year: 'numeric',
@@ -219,26 +218,26 @@ export default function Booking() {
               </span>
             </div>
 
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Heure</span>
-              <span className="text-white">{form.appointment_time}</span>
+            <div className="flex justify-between gap-3 text-sm min-w-0">
+              <span className="text-gray-500 shrink-0">Heure</span>
+              <span className="text-white text-right break-words">{form.appointment_time}</span>
             </div>
 
             {form.barber_name && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Barbier</span>
-                <span className="text-white">{form.barber_name}</span>
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 text-sm min-w-0">
+                <span className="text-gray-500 shrink-0">Barbier</span>
+                <span className="text-white sm:text-right break-words min-w-0">{form.barber_name}</span>
               </div>
             )}
 
-            <div className="flex justify-between gap-4 text-sm border-t border-gray-800 pt-2 mt-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 text-sm border-t border-gray-800 pt-2 mt-2 min-w-0">
               <span className="text-gray-500 shrink-0">Référence</span>
-              <span className="text-amber-300 font-mono text-sm tracking-widest text-right">{paymentReference}</span>
+              <span className="text-amber-300 font-mono text-sm tracking-normal sm:tracking-widest text-left sm:text-right break-all">{paymentReference}</span>
             </div>
 
-            <div className="flex justify-between text-sm border-t border-gray-800 pt-2 mt-2">
+            <div className="flex justify-between gap-3 text-sm border-t border-gray-800 pt-2 mt-2 min-w-0">
               <span className="text-gray-500">Paiement</span>
-              <span className="text-white capitalize">
+              <span className="text-white capitalize text-right break-words">
                 {form.payment_method === 'mvola'
                   ? 'MVola'
                   : form.payment_method === 'orange'
@@ -259,7 +258,7 @@ export default function Booking() {
               setPaymentReference(createPaymentReference());
               setCopiedReference(false);
             }}
-            className="btn-gold w-full"
+            className="btn-gold w-full max-w-full whitespace-normal break-words text-sm sm:text-base px-3 py-3"
           >
             Nouvelle Réservation
           </button>
@@ -428,45 +427,16 @@ export default function Booking() {
                   Date du Rendez-vous
                 </label>
 
-                <div className="relative">
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    name="appointment_date"
-                    value={form.appointment_date}
-                    onChange={handleChange}
-                    min={getTodayDate()}
-                    max={getMaxDate()}
-                    required
-                    onClick={() => {
-                      // Ouvre le calendrier natif au clic sur le champ, notamment sur ordinateur.
-                      const dateInput = dateInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
-                      try {
-                        dateInput?.showPicker?.();
-                      } catch {
-                        dateInput?.focus();
-                      }
-                    }}
-                    className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 pr-12 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200 [color-scheme:dark]"
-                  />
-                  <button
-                    type="button"
-                    aria-label="Ouvrir le calendrier"
-                    title="Choisir une date"
-                    onClick={() => {
-                      const dateInput = dateInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
-                      try {
-                        dateInput?.showPicker?.();
-                      } catch {
-                        dateInput?.focus();
-                        dateInput?.click();
-                      }
-                    }}
-                    className="absolute inset-y-0 right-0 flex items-center justify-center px-4 text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                  >
-                    <Calendar size={18} aria-hidden="true" />
-                  </button>
-                </div>
+                <input
+                  type="date"
+                  name="appointment_date"
+                  value={form.appointment_date}
+                  onChange={handleChange}
+                  min={getTodayDate()}
+                  max={getMaxDate()}
+                  required
+                  className="w-full bg-[#0a0a0a] border border-gray-800 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-600 transition-colors duration-200"
+                />
               </div>
 
               <div className="mb-8">
@@ -493,10 +463,10 @@ export default function Booking() {
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
                 <button
                   onClick={() => setStep(0)}
-                  className="btn-outline-gold flex-1"
+                  className="btn-outline-gold flex-1 min-w-0 whitespace-normal break-words px-3 py-3 text-sm sm:text-base"
                 >
                   Retour
                 </button>
@@ -504,7 +474,7 @@ export default function Booking() {
                 <button
                   disabled={!canProceedStep1}
                   onClick={() => setStep(2)}
-                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${
+                  className={`btn-gold flex-1 min-w-0 flex items-center justify-center gap-2 whitespace-normal break-words px-3 py-3 text-sm sm:text-base ${
                     !canProceedStep1 ? 'opacity-40 cursor-not-allowed' : ''
                   }`}
                 >
@@ -591,10 +561,10 @@ export default function Booking() {
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
                 <button
                   onClick={() => setStep(1)}
-                  className="btn-outline-gold flex-1"
+                  className="btn-outline-gold flex-1 min-w-0 whitespace-normal break-words px-3 py-3 text-sm sm:text-base"
                 >
                   Retour
                 </button>
@@ -602,7 +572,7 @@ export default function Booking() {
                 <button
                   disabled={!canProceedStep2}
                   onClick={() => setStep(3)}
-                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${
+                  className={`btn-gold flex-1 min-w-0 flex items-center justify-center gap-2 whitespace-normal break-words px-3 py-3 text-sm sm:text-base ${
                     !canProceedStep2 ? 'opacity-40 cursor-not-allowed' : ''
                   }`}
                 >
@@ -626,7 +596,7 @@ export default function Booking() {
                 Choisissez votre méthode de paiement. Le paiement mobile est sécurisé et instantané.
               </p>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-5 sm:mb-6">
                 {paymentMethods.map((pm) => (
                   <button
                     type="button"
@@ -646,13 +616,13 @@ export default function Booking() {
               </div>
 
               {form.payment_method !== 'cash' && (
-                <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-[#0d0d0d] p-5 sm:p-6">
+                <div className="mb-5 sm:mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-[#0d0d0d] p-3 sm:p-6 min-w-0">
                   <div className="flex items-start gap-3 mb-5">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-300 text-xl">
                       {form.payment_method === 'mvola' ? <span className="font-black italic text-yellow-400">M</span> : form.payment_method === 'orange' ? <span className="font-black text-orange-500">O</span> : <span className="font-black italic text-red-500">A</span>}
                     </div>
                     <div>
-                      <h3 className="text-white text-lg font-semibold">Instructions de paiement — {paymentMethods.find((pm) => pm.id === form.payment_method)?.label}</h3>
+                      <h3 className="text-white text-base sm:text-lg font-semibold leading-snug break-words">Instructions de paiement — {paymentMethods.find((pm) => pm.id === form.payment_method)?.label}</h3>
                       <p className="text-gray-400 text-sm mt-1">Envoyez le montant exact indiqué ci-dessous.</p>
                     </div>
                   </div>
@@ -682,7 +652,7 @@ export default function Booking() {
 
                   <div className="rounded-xl border border-gray-800 bg-black/20 p-4 mb-4">
                     <p className="text-gray-500 text-xs mb-1">Référence / raison du transfert</p>
-                    <p className="text-white font-mono text-lg font-bold tracking-[0.2em]">{paymentReference}</p>
+                    <p className="text-white font-mono text-base sm:text-lg font-bold tracking-[0.12em] break-all">{paymentReference}</p>
                     <p className="text-gray-400 text-xs mt-2">Indiquez cette référence comme motif du transfert.</p>
                     <button type="button" onClick={() => { navigator.clipboard?.writeText(paymentReference); setCopiedReference(true); }} className="mt-3 inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200">
                       <Copy size={14} /> {copiedReference ? 'Référence copiée' : 'Copier la référence'}
@@ -752,10 +722,10 @@ export default function Booking() {
                 </div>
               )}
 
-              <div className="flex gap-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
                 <button
                   onClick={() => setStep(2)}
-                  className="btn-outline-gold flex-1"
+                  className="btn-outline-gold flex-1 min-w-0 whitespace-normal break-words px-3 py-3 text-sm sm:text-base"
                 >
                   Retour
                 </button>
@@ -763,7 +733,7 @@ export default function Booking() {
                 <button
                   disabled={!canProceedStep3 || loading}
                   onClick={handleSubmit}
-                  className={`btn-gold flex-1 flex items-center justify-center gap-2 ${
+                  className={`btn-gold flex-1 min-w-0 flex items-center justify-center gap-2 whitespace-normal break-words px-3 py-3 text-sm sm:text-base ${
                     !canProceedStep3 || loading
                       ? 'opacity-60 cursor-not-allowed'
                       : ''
